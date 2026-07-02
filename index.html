@@ -113,7 +113,6 @@ body.dark .todo-item{background:#333}
 <script>
 function updateDT(){const n=new Date(),d=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];dt.innerHTML=d[n.getDay()]+"<br>"+n.toLocaleDateString()+"<br>"+n.toLocaleTimeString();}
 setInterval(updateDT,1000);updateDT();
-
 let today=new Date().toISOString().slice(0,10);
 let timerInt=null;
 let current=JSON.parse(localStorage.getItem("studyCurrent")||"{}");
@@ -253,7 +252,6 @@ document.getElementById("nextDay")
     document.getElementById("taskDate").value=taskDate;
 
     loadTasks();
-
 }
 document.getElementById("todayBtn")
 
@@ -264,7 +262,6 @@ document.getElementById("todayBtn")
     document.getElementById("taskDate").value=today;
 
     loadTasks();
-
 }
 </script>
 </body></html>
