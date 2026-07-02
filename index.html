@@ -21,6 +21,14 @@ table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #aaa;padding:8px;text-align:center}
 canvas{max-width:100%}
 footer{text-align:center;padding:15px;font-weight:bold}
+
+.todo-input{display:flex;gap:10px;margin-bottom:10px}
+.todo-input input{flex:1;padding:8px}
+.todo-item{display:flex;justify-content:space-between;align-items:center;padding:8px;margin:6px 0;background:#f2f2f2;border-radius:6px}
+body.dark .todo-item{background:#333}
+.todo-item.done span{text-decoration:line-through;color:green}
+.deleteBtn{background:#d33;color:#fff;border:none;padding:4px 8px;border-radius:4px}
+
 </style>
 </head>
 <body>
@@ -60,6 +68,28 @@ footer{text-align:center;padding:15px;font-weight:bold}
 
 <div class="progress"><div id="bar"></div></div>
 <p id="progressText"></p>
+</div>
+
+
+<div class="card">
+<h3>📋 Study Tasks</h3>
+
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+
+<button id="prevDay">⬅</button>
+
+<input type="date" id="taskDate">
+
+<button id="nextDay">➡</button>
+
+<button id="todayBtn">Today</button>
+
+</div>
+<div class="todo-input">
+<input id="taskInput" placeholder="Enter task">
+<button id="addTaskBtn">Add</button>
+</div>
+<div id="todoList"></div>
 </div>
 
 <div class="card">
@@ -113,5 +143,128 @@ showPom();
 
 function toggleMode(){document.body.classList.toggle("dark")}
 if(current.running){timerInt=setInterval(render,250);}render();loadHistory();drawCalendar();drawChart();
+
+// TODO MODULE
+let taskDate=today;
+
+document.getElementById("taskDate").value=today;
+let studyTasks=JSON.parse(localStorage.getItem('studyTasks')||'{}');
+if(!studyTasks[taskDate])studyTasks[taskDate]=[];
+function saveTasks(){
+
+    let dates=Object.keys(studyTasks).sort();
+
+    while(dates.length>30){
+
+        delete studyTasks[dates.shift()];
+
+    }
+
+    localStorage.setItem(
+        "studyTasks",
+        JSON.stringify(studyTasks)
+    );
+
+}
+function renderTasks(){
+    if(!studyTasks[taskDate]){
+
+    studyTasks[taskDate]=[];
+
+}
+const list=document.getElementById('todoList'); if(!list)return;
+list.innerHTML='';
+let done=0;
+studyTasks[taskDate].forEach((t,i)=>{
+if(t.done)done++;
+const d=document.createElement('div');
+d.className='todo-item'+(t.done?' done':'');
+d.innerHTML=`<div><input type="checkbox" ${t.done?'checked':''}> <span>${t.text}</span></div><button class="deleteBtn">🗑</button>`;
+d.querySelector('input').onchange=()=>{studyTasks[taskDate][i].done=!studyTasks[taskDate][i].done;saveTasks();renderTasks();};
+d.querySelector('button').onclick=()=>{studyTasks[taskDate].splice(i,1);saveTasks();renderTasks();};
+list.appendChild(d);
+});
+}
+document.getElementById('addTaskBtn').onclick=()=>{
+let v=document.getElementById('taskInput').value.trim();
+if(!v)return;
+if(!studyTasks[taskDate]){
+
+    studyTasks[taskDate]=[];
+
+}
+
+studyTasks[taskDate].push({
+
+    text:v,
+
+    done:false
+
+});
+document.getElementById('taskInput').value='';
+saveTasks();renderTasks();
+};
+renderTasks();
+function loadTasks(){
+
+    if(!studyTasks[taskDate]){
+
+        studyTasks[taskDate]=[];
+
+    }
+
+    renderTasks();
+
+}
+document.getElementById("taskDate")
+
+.onchange=function(){
+
+    taskDate=this.value;
+
+    loadTasks();
+
+};
+document.getElementById("prevDay")
+
+.onclick=function(){
+
+    let d=new Date(taskDate);
+
+    d.setDate(d.getDate()-1);
+
+    taskDate=d.toISOString().slice(0,10);
+
+    document.getElementById("taskDate").value=taskDate;
+
+    loadTasks();
+
+}
+document.getElementById("nextDay")
+
+.onclick=function(){
+
+    let d=new Date(taskDate);
+
+    d.setDate(d.getDate()+1);
+
+    taskDate=d.toISOString().slice(0,10);
+
+    document.getElementById("taskDate").value=taskDate;
+
+    loadTasks();
+
+}
+document.getElementById("todayBtn")
+
+.onclick=function(){
+
+    taskDate=today;
+
+    document.getElementById("taskDate").value=today;
+
+    loadTasks();
+
+}
 </script>
 </body></html>
