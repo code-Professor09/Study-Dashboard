@@ -85,53 +85,24 @@ function updateDT(){const n=new Date(),d=["Sunday","Monday","Tuesday","Wednesday
 setInterval(updateDT,1000);updateDT();
 
 let today=new Date().toISOString().slice(0,10);
-let secs=0,timerInt=null;
+let timerInt=null;
 let current=JSON.parse(localStorage.getItem("studyCurrent")||"{}");
-if(current.date===today)secs=current.seconds||0;
-
-let goal=parseFloat(localStorage.getItem("dailyGoalHours"))||8;
-goalInput.value=goal;
-
+if(current.date!==today){current={date:today,elapsed:0,running:false,startTime:null};}
+let goal=parseFloat(localStorage.getItem("dailyGoalHours"))||8;goalInput.value=goal;
 function fmt(s){let h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return[h,m,ss].map(v=>String(v).padStart(2,"0")).join(":")}
-function render(){timer.textContent=fmt(secs);updateProgress();}
-function saveCurrent(){localStorage.setItem("studyCurrent",JSON.stringify({date:today,seconds:secs}));saveHistory();}
-function saveGoal(){goal=parseFloat(goalInput.value)||8;localStorage.setItem("dailyGoalHours",goal);updateProgress();}
-function updateProgress(){
- goalInfo.textContent="Daily Goal: "+goal+" hour(s)";
- let p=Math.min(secs/(goal*3600)*100,100);
- bar.style.width=p+"%";
- progressText.textContent=p.toFixed(1)+"% Complete ("+fmt(secs)+" / "+goal+"h)";
-}
-function start(){if(timerInt)return;timerInt=setInterval(()=>{secs++;render();saveCurrent();},1000)}
-function stop(){clearInterval(timerInt);timerInt=null;saveCurrent();}
-function resetTimer(){stop();secs=0;render();saveCurrent();}
-
-function saveHistory(){
- let h=JSON.parse(localStorage.getItem("studyHistory")||"{}");
- h[today]=secs;
- let k=Object.keys(h).sort();
- while(k.length>7){delete h[k.shift()]}
- localStorage.setItem("studyHistory",JSON.stringify(h));
- loadHistory();drawChart();drawCalendar();
-}
-function loadHistory(){
- let h=JSON.parse(localStorage.getItem("studyHistory")||"{}"),rows="";
- Object.keys(h).sort().reverse().forEach(d=>rows+=`<tr><td>${d}</td><td>${fmt(h[d])}</td></tr>`);
- history.innerHTML=rows;
-}
-function drawCalendar(){
- let h=JSON.parse(localStorage.getItem("studyHistory")||"{}"),t="<table><tr><th>Date</th><th>Hours</th></tr>";
- Object.keys(h).sort().forEach(d=>t+=`<tr><td>${d}</td><td>${(h[d]/3600).toFixed(2)}</td></tr>`);
- calendar.innerHTML=t+"</table>";
-}
-function drawChart(){
- let ctx=chart.getContext("2d");ctx.clearRect(0,0,700,250);
- let h=JSON.parse(localStorage.getItem("studyHistory")||"{}");
- let keys=Object.keys(h).sort(); if(!keys.length)return;
- let max=Math.max(...keys.map(k=>h[k]),1);
- keys.forEach((k,i)=>{let x=60+i*85,b=(h[k]/max)*150;ctx.fillStyle="#4f8cff";ctx.fillRect(x,200-b,40,b);ctx.fillStyle="#000";ctx.fillText((h[k]/3600).toFixed(1)+"h",x-3,195-b);ctx.fillText(k.slice(5),x-8,220);});
-}
-
+function elapsed(){return current.running?current.elapsed+Math.floor((Date.now()-current.startTime)/1000):current.elapsed;}
+function persist(){localStorage.setItem("studyCurrent",JSON.stringify(current));}
+function render(){let s=elapsed();timer.textContent=fmt(s);goalInfo.textContent="Daily Goal: "+goal+" hour(s)";let p=Math.min(s/(goal*3600)*100,100);bar.style.width=p+"%";progressText.textContent=p.toFixed(1)+"% Complete ("+fmt(s)+" / "+goal+"h)";}
+function saveGoal(){goal=parseFloat(goalInput.value)||8;localStorage.setItem("dailyGoalHours",goal);render();}
+function start(){if(current.running)return;current.running=true;current.startTime=Date.now();persist();clearInterval(timerInt);timerInt=setInterval(render,250);}
+function stop(){if(!current.running)return;current.elapsed=elapsed();current.running=false;current.startTime=null;persist();saveHistory();clearInterval(timerInt);render();}
+function resetTimer(){clearInterval(timerInt);current={date:today,elapsed:0,running:false,startTime:null};persist();saveHistory();render();}
+function saveHistory(){let h=JSON.parse(localStorage.getItem("studyHistory")||"{}");h[today]=elapsed();let k=Object.keys(h).sort();while(k.length>7)delete h[k.shift()];localStorage.setItem("studyHistory",JSON.stringify(h));loadHistory();drawChart();drawCalendar();}
+function loadHistory(){let h=JSON.parse(localStorage.getItem("studyHistory")||"{}"),rows="";Object.keys(h).sort().reverse().forEach(d=>rows+=`<tr><td>${d}</td><td>${fmt(h[d])}</td></tr>`);history.innerHTML=rows;}
+function drawCalendar(){let h=JSON.parse(localStorage.getItem("studyHistory")||"{}"),t="<table><tr><th>Date</th><th>Hours</th></tr>";Object.keys(h).sort().forEach(d=>t+=`<tr><td>${d}</td><td>${(h[d]/3600).toFixed(2)}</td></tr>`);calendar.innerHTML=t+"</table>";}
+function drawChart(){let ctx=chart.getContext("2d");ctx.clearRect(0,0,700,250);let h=JSON.parse(localStorage.getItem("studyHistory")||"{}");let keys=Object.keys(h).sort();if(!keys.length)return;let max=Math.max(...keys.map(k=>h[k]),1);keys.forEach((k,i)=>{let x=60+i*85,b=(h[k]/max)*150;ctx.fillStyle="#4f8cff";ctx.fillRect(x,200-b,40,b);ctx.fillStyle="#000";ctx.fillText((h[k]/3600).toFixed(1)+"h",x-3,195-b);ctx.fillText(k.slice(5),x-8,220);});}
+window.addEventListener("beforeunload",()=>{if(current.running){current.elapsed=elapsed();current.startTime=Date.now();persist();}});
+document.addEventListener("visibilitychange",()=>render());
 let pomSec=1500,pInt=null;
 function showPom(){pomodoro.textContent=String(Math.floor(pomSec/60)).padStart(2,"0")+":"+String(pomSec%60).padStart(2,"0")}
 mode.onchange=()=>{resetPom()}
@@ -141,6 +112,6 @@ function resetPom(){stopPom();pomSec=parseInt(mode.value);showPom()}
 showPom();
 
 function toggleMode(){document.body.classList.toggle("dark")}
-render();loadHistory();drawCalendar();drawChart();
+if(current.running){timerInt=setInterval(render,250);}render();loadHistory();drawCalendar();drawChart();
 </script>
 </body></html>
